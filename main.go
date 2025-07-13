@@ -1,15 +1,21 @@
 package main
 
 import (
-	"encoding/json"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/felixsolom/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	db             *database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -47,39 +53,32 @@ func handlerHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(http.StatusText(http.StatusOK)))
 }
 
-func validateChirp(w http.ResponseWriter, r *http.Request) {
-	type parameters struct {
-		Body string `json:"body"`
-	}
-
-	type returnVals struct {
-		Cleaned_body string `json:"cleaned_body"`
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	params := parameters{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
-		return
-	}
-
-	if len(params.Body) > 140 {
-		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
-		return
-	}
-
-	cleanedChirp := wordCleanUp(params.Body)
-
-	respondWithJSON(w, http.StatusOK, returnVals{
-		Cleaned_body: cleanedChirp,
-	})
-}
-
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("No .env file found %v", err)
+	}
+
+	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("dbURL must be set")
+	}
+
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatalf("Error openning DB: %v", err)
+	}
+
+	defer db.Close()
+
+	dbQueries := database.New(db)
+
+	cfg := &apiConfig{
+		fileserverHits: atomic.Int32{},
+		db:             dbQueries,
+	}
+
 	const port = "8080"
 	const rootDir = "."
-	cfg := &apiConfig{}
 
 	mux := http.NewServeMux()
 	mux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app/", http.FileServer(http.Dir(rootDir)))))
