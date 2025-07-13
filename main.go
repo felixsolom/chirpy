@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -16,41 +15,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
-}
-
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileserverHits.Add(1)
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (cfg *apiConfig) middlewareNumOfRequests() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hits := cfg.fileserverHits.Load()
-		w.Header().Set("Content-Type", "text/html; charset=utf8")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `<html>
-  <body>
-    <h1>Welcome, Chirpy Admin</h1>
-    <p>Chirpy has been visited %d times!</p>
-  </body>
-</html>`, hits)
-	})
-}
-
-func (cfg *apiConfig) middlewareResetReqCounter() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileserverHits.Store(0)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Hits reset to 0"))
-	})
-}
-
-func handlerHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(http.StatusText(http.StatusOK)))
+	platform       string
 }
 
 func main() {
@@ -75,6 +40,7 @@ func main() {
 	cfg := &apiConfig{
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
+		platform:       os.Getenv("PLATFORM"),
 	}
 
 	const port = "8080"
@@ -82,8 +48,9 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app/", http.FileServer(http.Dir(rootDir)))))
-	mux.Handle("GET /api/healthz", http.StripPrefix("/api/", http.HandlerFunc(handlerHealth)))
-	mux.Handle("POST /api/validate_chirp", http.HandlerFunc(validateChirp))
+	mux.HandleFunc("GET /api/healthz", handlerHealth)
+	mux.HandleFunc("POST /api/validate_chirp", validateChirp)
+	mux.HandleFunc("POST /api/users", cfg.handlerCreateUser)
 	mux.Handle("GET /admin/metrics", cfg.middlewareNumOfRequests())
 	mux.Handle("POST /admin/reset", cfg.middlewareResetReqCounter())
 
