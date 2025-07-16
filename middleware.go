@@ -25,18 +25,3 @@ func (cfg *apiConfig) middlewareNumOfRequests() http.Handler {
 </html>`, hits)
 	})
 }
-
-func (cfg *apiConfig) middlewareResetReqCounter() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if cfg.platform != "dev" {
-			respondWithError(w, http.StatusForbidden, "Permission denied", nil)
-		}
-		err := cfg.db.DeleteAllUsers(r.Context())
-		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, "Couldn't delete users", err)
-		}
-		w.Header().Set("Content-Type", "text/plain; charset=utf8")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("All users were deleted"))
-	})
-}

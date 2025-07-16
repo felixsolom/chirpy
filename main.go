@@ -52,8 +52,10 @@ func main() {
 	mux.HandleFunc("POST /api/validate_chirp", validateChirp)
 	mux.HandleFunc("POST /api/chirps", cfg.handlerCreateChirp)
 	mux.HandleFunc("POST /api/users", cfg.handlerCreateUser)
+	mux.HandleFunc("GET /api/chirps", cfg.handlerAllChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", cfg.handlerChirp)
 	mux.Handle("GET /admin/metrics", cfg.middlewareNumOfRequests())
-	mux.Handle("POST /admin/reset", cfg.middlewareResetReqCounter())
+	mux.HandleFunc("POST /admin/reset", cfg.handlerAdminReset)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
