@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
@@ -117,6 +118,49 @@ func TestMakeAndValidateJWT(t *testing.T) {
 			}
 			if gotID != tc.wantUserID {
 				t.Fatalf("ValidateJWT() userID mismatch: want %s got %s", tc.wantUserID, gotID)
+			}
+		})
+	}
+}
+
+func TestGetBearer(t *testing.T) {
+
+	makeHdr := func(v string) http.Header {
+		h := http.Header{}
+		if v != "" {
+			h.Set("Authorization", v)
+		}
+		return h
+	}
+
+	type TestCase struct {
+		name    string
+		header  http.Header
+		wantErr bool
+	}
+
+	cases := []TestCase{
+		{
+			name:    "valid header",
+			header:  makeHdr("Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"),
+			wantErr: false,
+		},
+		{
+			name:    "also valid header",
+			header:  makeHdr("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"),
+			wantErr: false,
+		},
+		{
+			name:    "invalid header",
+			header:  makeHdr(""),
+			wantErr: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := auth.GetBearerToken(tc.header)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("GetBearerToken() err = %v, wantErr = %v", err, tc.wantErr)
 			}
 		})
 	}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/felixsolom/chirpy/internal/auth"
 	"github.com/felixsolom/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -30,6 +31,15 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	//authorization
+	var userID uuid.NullUUID
+	if tokenStr, err := auth.GetBearerToken(r.Header); err == nil {
+		if id, err := auth.ValidateJWT(tokenStr, cfg.secret); err == nil {
+			userID = uuid.NullUUID{UUID: id, Valid: true}
+		}
+	}
+
+	//allowed length of chirp
 	if len(in.Body) > 140 {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
 		return
@@ -38,7 +48,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 	cleaned := wordCleanUp(in.Body)
 	params := database.CreateChirpParams{
 		Body:   cleaned,
-		UserID: uuid.NullUUID{UUID: *in.UserID, Valid: true},
+		UserID: userID,
 	}
 
 	chirp, err := cfg.db.CreateChirp(r.Context(), params)
