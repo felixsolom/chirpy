@@ -17,6 +17,7 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 		UpdatedAt      time.Time `json:"updated_at"`
 		Email          string    `json:"email"`
 		HashedPassword string    `json:"hashed_password"`
+		IsChirpyRed    bool      `json:"is_chirpy_red"`
 	}
 	type parameters struct {
 		Email    string `json:"email"`
@@ -48,9 +49,10 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	respondWithJSON(w, http.StatusCreated, User{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:          user.ID,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 	})
 }
