@@ -58,3 +58,12 @@ func GetBearerToken(headers http.Header) (string, error) {
 	bearerToken = strings.TrimSpace(strings.TrimPrefix(bearerToken, "Bearer"))
 	return bearerToken, nil
 }
+
+func GetAPIKey(headers http.Header) (string, error) {
+	apiKey := headers.Get("Authorization")
+	if apiKey == "" {
+		return "", fmt.Errorf("no authentication header was found")
+	}
+	apiKey = strings.TrimSpace(strings.TrimPrefix(apiKey, "ApiKey"))
+	return apiKey, nil
+}
