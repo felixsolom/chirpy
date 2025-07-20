@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/felixsolom/chirpy/internal/database"
@@ -20,10 +21,10 @@ func (cfg *apiConfig) handlerAllChirps(w http.ResponseWriter, r *http.Request) {
 	var chirps []database.Chirp
 	var err error
 
-	authorIDStr := r.URL.Query().Get("author_id")
+	authorStr := r.URL.Query().Get("author_id")
 
-	if authorIDStr != "" {
-		id, parseErr := uuid.Parse(authorIDStr)
+	if authorStr != "" {
+		id, parseErr := uuid.Parse(authorStr)
 		if parseErr != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid author_id format", err)
 			return
@@ -57,6 +58,12 @@ func (cfg *apiConfig) handlerAllChirps(w http.ResponseWriter, r *http.Request) {
 		if dbChirp.UserID.Valid {
 			out[i].UserID = &dbChirp.UserID.UUID
 		}
+	}
+	sortOrder := r.URL.Query().Get("sort")
+	if sortOrder == "desc" {
+		sort.Slice(out, func(i, j int) bool {
+			return out[i].CreatedAt.After(out[j].CreatedAt)
+		})
 	}
 	respondWithJSON(w, http.StatusOK, out)
 }
